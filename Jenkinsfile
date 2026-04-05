@@ -4,8 +4,12 @@ pipeline {
     environment {
         // Project name used for all image tags
         PROJECT     = "mlops"
-        SERVING_URL = "http://localhost:8000"
-        MONITOR_URL = "http://localhost:8001"
+        SERVING_HOST_PORT = "18000"
+        MONITORING_HOST_PORT = "18001"
+        FRONTEND_HOST_PORT = "13000"
+        SERVING_URL = "http://localhost:18000"
+        MONITOR_URL = "http://localhost:18001"
+        COMPOSE_CMD = ""
     }
 
     stages {
@@ -18,11 +22,38 @@ pipeline {
             }
         }
 
+        // ── Stage 1.5: Resolve Compose Command ───────────────────
+        stage('Resolve Compose') {
+            steps {
+                script {
+                    def cmd = sh(
+                        script: '''
+                            if docker compose version >/dev/null 2>&1; then
+                                echo "docker compose"
+                            elif command -v docker-compose >/dev/null 2>&1; then
+                                echo "docker-compose"
+                            else
+                                echo ""
+                            fi
+                        ''',
+                        returnStdout: true
+                    ).trim()
+
+                    if (!cmd) {
+                        error("Docker Compose is not available. Install docker compose plugin or docker-compose.")
+                    }
+
+                    env.COMPOSE_CMD = cmd
+                    echo "Using compose command: ${env.COMPOSE_CMD}"
+                }
+            }
+        }
+
         // ── Stage 2: Build All Images ──────────────────────────────
         stage('Build Images') {
             steps {
                 echo '🔨 Building all Docker images...'
-                sh 'docker compose build'
+                sh "${env.COMPOSE_CMD} build"
             }
         }
 
@@ -32,7 +63,7 @@ pipeline {
         stage('Data Ingestion') {
             steps {
                 echo '📦 Running data ingestion...'
-                sh 'docker compose run --rm ingestion'
+                sh "${env.COMPOSE_CMD} run --rm ingestion"
             }
         }
 
@@ -42,7 +73,7 @@ pipeline {
         stage('Train Model') {
             steps {
                 echo '🤖 Training model...'
-                sh 'docker compose run --rm training'
+                sh "${env.COMPOSE_CMD} run --rm training"
             }
         }
 
@@ -51,7 +82,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo '🚀 Deploying serving and monitoring...'
-                sh 'docker compose up -d serving monitoring frontend'
+                sh "${env.COMPOSE_CMD} up -d serving monitoring frontend"
 
                 echo '⏳ Waiting for services to start...'
                 sh 'sleep 20'
@@ -88,7 +119,7 @@ pipeline {
                     echo "Model healthy: $HEALTHY"
                     if [ "$HEALTHY" != "true" ]; then
                         echo "❌ Monitoring gate failed — model is unhealthy! Rolling back..."
-                        docker compose down
+                        ${COMPOSE_CMD} down
                         exit 1
                     fi
                     echo "✅ Monitoring gate passed — model is healthy!"
@@ -101,7 +132,7 @@ pipeline {
             steps {
                 echo '🎉 All gates passed — deployment successful!'
                 echo '✅ Services running:'
-                sh 'docker compose ps'
+                sh "${env.COMPOSE_CMD} ps"
             }
         }
     }
@@ -113,7 +144,7 @@ pipeline {
         }
         failure {
             echo '❌ Pipeline failed. Check logs above.'
-            sh 'docker compose down || true'
+            sh "${env.COMPOSE_CMD} down || true"
         }
         always {
             echo '📋 Pipeline finished. Check http://localhost:3000 for dashboard.'

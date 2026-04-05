@@ -1,5 +1,3 @@
-version: "3.8"
-
 # ---------- Shared Volume ----------
 # All services read/write to this one volume
 # No manual mounting needed
@@ -18,7 +16,6 @@ services:
   ingestion:
     build: ./data-ingestion
     image: mlops-ingestion
-    container_name: ingestion
     volumes:
       - mlops-shared:/app/shared
     networks:
@@ -29,7 +26,6 @@ services:
   training:
     build: ./training
     image: mlops-training
-    container_name: training
     volumes:
       - mlops-shared:/app/shared
     networks:
@@ -40,13 +36,12 @@ services:
   serving:
     build: ./serving
     image: mlops-serving
-    container_name: serving
     volumes:
       - mlops-shared:/app/shared
     networks:
       - mlops-network
     ports:
-      - "8000:8000"
+      - "${SERVING_HOST_PORT:-8000}:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
@@ -58,13 +53,12 @@ services:
   monitoring:
     build: ./monitoring
     image: mlops-monitoring
-    container_name: monitoring
     volumes:
       - mlops-shared:/app/shared
     networks:
       - mlops-network
     ports:
-      - "8001:8001"
+      - "${MONITORING_HOST_PORT:-8001}:8001"
     depends_on:
       - serving
     environment:
@@ -76,11 +70,10 @@ services:
   frontend:
     build: ./frontend
     image: mlops-frontend
-    container_name: frontend
     networks:
       - mlops-network
     ports:
-      - "3000:3000"
+      - "${FRONTEND_HOST_PORT:-3000}:3000"
     depends_on:
       - serving
       - monitoring
