@@ -1,15 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        COMPOSE_PROJECT_NAME = ''
-        SERVING_HOST_PORT = ''
-        MONITORING_HOST_PORT = ''
-        FRONTEND_HOST_PORT = ''
-        SERVING_URL = ''
-        MONITOR_URL = ''
-    }
-
     stages {
 
         stage('Checkout') {
@@ -19,20 +10,10 @@ pipeline {
             }
         }
 
-        stage('Resolve Runtime Config') {
+        stage('Cleanup') {
             steps {
-                script {
-                    int offset = (env.BUILD_NUMBER as Integer) % 500
-                    env.COMPOSE_PROJECT_NAME = "mlops-${env.BUILD_NUMBER}"
-                    env.SERVING_HOST_PORT = "${18000 + offset}"
-                    env.MONITORING_HOST_PORT = "${19000 + offset}"
-                    env.FRONTEND_HOST_PORT = "${13000 + offset}"
-                    env.SERVING_URL = "http://localhost:${env.SERVING_HOST_PORT}"
-                    env.MONITOR_URL = "http://localhost:${env.MONITORING_HOST_PORT}"
-
-                    echo "Using compose project: ${env.COMPOSE_PROJECT_NAME}"
-                    echo "Using ports: serving=${env.SERVING_HOST_PORT}, monitoring=${env.MONITORING_HOST_PORT}, frontend=${env.FRONTEND_HOST_PORT}"
-                }
+                echo '🧹 Stopping any previously running containers...'
+                sh 'docker compose down || true'
             }
         }
 
@@ -60,7 +41,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo '🚀 Deploying services...'
-                sh 'SERVING_HOST_PORT=${SERVING_HOST_PORT} MONITORING_HOST_PORT=${MONITORING_HOST_PORT} FRONTEND_HOST_PORT=${FRONTEND_HOST_PORT} docker compose up -d serving monitoring frontend'
+                sh 'docker compose up -d serving monitoring frontend'
                 sh 'sleep 20'
             }
         }
@@ -69,10 +50,10 @@ pipeline {
             steps {
                 echo '🏥 Checking serving health...'
                 sh '''
-                    STATUS=$(curl -s ${SERVING_URL}/health | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','unknown'))")
-                    echo "Serving status: $STATUS"
-                    if [ "$STATUS" != "ok" ]; then
-                        echo "Health check failed!"
+                    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)
+                    echo "Health endpoint returned: $HTTP_CODE"
+                    if [ "$HTTP_CODE" != "200" ]; then
+                        echo "Health check failed — got $HTTP_CODE instead of 200!"
                         exit 1
                     fi
                     echo "Serving is healthy!"
@@ -85,14 +66,15 @@ pipeline {
                 echo '📊 Waiting for monitoring checks...'
                 sh 'sleep 30'
                 sh '''
-                    HEALTHY=$(curl -s ${MONITOR_URL}/status | python3 -c "import sys,json; d=json.load(sys.stdin); print(str(d.get('healthy', False)).lower())")
-                    echo "Model healthy: $HEALTHY"
-                    if [ "$HEALTHY" != "true" ]; then
+                    RESPONSE=$(curl -s http://localhost:8001/status)
+                    echo "Monitoring response: $RESPONSE"
+                    if echo "$RESPONSE" | grep -q '"healthy": true'; then
+                        echo "Monitoring gate passed!"
+                    else
                         echo "Monitoring gate failed — rolling back!"
                         docker compose down
                         exit 1
                     fi
-                    echo "Monitoring gate passed!"
                 '''
             }
         }
@@ -107,14 +89,14 @@ pipeline {
 
     post {
         success {
-            echo "✅ Pipeline completed! MLOps platform is live at http://localhost:${env.FRONTEND_HOST_PORT}"
+            echo '✅ Pipeline completed! MLOps platform is live at http://localhost:3000'
         }
         failure {
             echo '❌ Pipeline failed. Rolling back...'
             sh 'docker compose down || true'
         }
         always {
-            echo "📋 Done. Dashboard → http://localhost:${env.FRONTEND_HOST_PORT}"
+            echo '📋 Done. Dashboard → http://localhost:3000'
         }
     }
 }
