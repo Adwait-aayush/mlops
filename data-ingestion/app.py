@@ -12,7 +12,7 @@ OUTPUT_DIR  = "/app/shared/data"
 DATA_PATH   = os.path.join(OUTPUT_DIR, "dataset.csv")
 REPORT_PATH = os.path.join(OUTPUT_DIR, "ingestion_report.json")
 
-# Reliable GitHub-hosted SMS spam dataset (5572 real spam/ham messages)
+#  SMS spam dataset 
 DATASET_URL = "https://raw.githubusercontent.com/mohitgupta-omg/Kaggle-SMS-Spam-Collection-Dataset-/master/spam.csv"
 
 
@@ -23,7 +23,7 @@ def fetch_data():
     tmp_path = "/tmp/spam.csv"
     urllib.request.urlretrieve(DATASET_URL, tmp_path)
 
-    # CSV has columns: v1 = ham/spam label, v2 = message text
+    
     raw = pd.read_csv(tmp_path, encoding="latin-1", usecols=[0, 1])
     raw.columns = ["label_text", "text"]
 
@@ -60,7 +60,7 @@ def main():
         log.error("Validation failed. Stopping.")
         raise SystemExit(1)
 
-    # Clean and save
+  
     df = df.dropna()
     df = df[df["text"].str.strip().str.len() > 5].reset_index(drop=True)
     df.to_csv(DATA_PATH, index=False)

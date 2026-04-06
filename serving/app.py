@@ -13,7 +13,7 @@ MODEL_PATH = "/app/shared/models/model.pkl"
 app    = FastAPI(title="Spam Classifier API")
 model  = None
 
-# Allow the React dashboard to call this API
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,7 +22,7 @@ app.add_middleware(
 )
 
 
-# ---------- Load model on startup ----------
+
 @app.on_event("startup")
 def load_model():
     global model
@@ -34,17 +34,17 @@ def load_model():
     log.info("Model loaded successfully.")
 
 
-# ---------- Request / Response shapes ----------
+
 class PredictRequest(BaseModel):
     text: str
 
 class PredictResponse(BaseModel):
     text:       str
-    prediction: str        # "spam" or "not spam"
-    confidence: float      # how confident the model is
+    prediction: str        
+    confidence: float      
 
 
-# ---------- Routes ----------
+
 @app.get("/health")
 def health():
     """Jenkins and monitoring use this to check if the service is up."""

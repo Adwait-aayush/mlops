@@ -1,18 +1,13 @@
-# ---------- Shared Volume ----------
-# All services read/write to this one volume
-# No manual mounting needed
+
 volumes:
   mlops-shared:
 
-# ---------- Shared Network ----------
-# All services talk to each other using their service name as hostname
 networks:
   mlops-network:
 
 services:
 
-  # ── 1. Data Ingestion ──────────────────────────────────────────
-  # Runs once, downloads and validates the dataset, then exits
+ 
   ingestion:
     build: ./data-ingestion
     image: mlops-ingestion
@@ -21,8 +16,7 @@ services:
     networks:
       - mlops-network
 
-  # ── 2. Training ────────────────────────────────────────────────
-  # Runs after ingestion, trains the model, then exits
+  
   training:
     build: ./training
     image: mlops-training
@@ -31,8 +25,7 @@ services:
     networks:
       - mlops-network
 
-  # ── 3. Serving ─────────────────────────────────────────────────
-  # Stays running, serves predictions on port 8000
+
   serving:
     build: ./serving
     image: mlops-serving
@@ -48,8 +41,7 @@ services:
       timeout: 5s
       retries: 3
 
-  # ── 4. Monitoring ──────────────────────────────────────────────
-  # Stays running, pings serving every 15 seconds
+
   monitoring:
     build: ./monitoring
     image: mlops-monitoring
@@ -62,11 +54,10 @@ services:
     depends_on:
       - serving
     environment:
-      # Uses container name "serving" as hostname — works inside docker network
+      
       - SERVING_URL=http://serving:8000
 
-  # ── 5. Frontend Dashboard ──────────────────────────────────────
-  # React app served via nginx on port 3000
+  
   frontend:
     build: ./frontend
     image: mlops-frontend

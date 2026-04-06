@@ -1,4 +1,4 @@
-# ── Stage 1: Build the React app ──────────────────────────────
+
 FROM node:18-alpine AS builder
 
 WORKDIR /app
@@ -11,15 +11,14 @@ COPY src/ src/
 
 RUN npm run build
 
-# ── Stage 2: Serve with nginx ──────────────────────────────────
 FROM nginx:alpine
 
-# Copy built files into nginx
+
 COPY --from=builder /app/build /usr/share/nginx/html
 
 EXPOSE 3000
 
-# Tell nginx to serve on port 3000
+
 RUN echo 'server { listen 3000; location / { root /usr/share/nginx/html; try_files $uri /index.html; } }' \
     > /etc/nginx/conf.d/default.conf
 

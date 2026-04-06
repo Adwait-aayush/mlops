@@ -11,15 +11,15 @@ import threading
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-# Where the serving service lives (container name in docker-compose)
+
 SERVING_URL     = os.getenv("SERVING_URL", "http://serving:8000")
 REPORT_PATH     = "/app/shared/monitoring/report.json"
-CHECK_INTERVAL  = 15       # seconds between each check
-MIN_CONFIDENCE  = 0.55     # if avg confidence drops below this → unhealthy
+CHECK_INTERVAL  = 15      
+MIN_CONFIDENCE  = 0.55     
 
 app = FastAPI(title="Monitoring Service")
 
-# Allow the React dashboard to call this API
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,12 +27,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory store of recent checks
+
 recent_checks = []
 
 
-# ---------- Test samples ----------
-# These are sent to the serving service to check it's working correctly
 TEST_SAMPLES = [
     {"text": "WINNER! You have been selected for a cash prize of 1000 pounds. Call now!", "expected": "spam"},
     {"text": "Free entry in 2 a weekly competition to win FA Cup final tickets",           "expected": "spam"},
@@ -98,7 +96,7 @@ def monitor_loop():
             report = save_report(results, healthy)
             recent_checks.append(report)
 
-            # Keep only last 20 checks in memory
+            
             if len(recent_checks) > 20:
                 recent_checks.pop(0)
 
@@ -110,7 +108,7 @@ def monitor_loop():
         time.sleep(CHECK_INTERVAL)
 
 
-# ---------- Routes ----------
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -137,7 +135,7 @@ def history():
     return {"checks": recent_checks}
 
 
-# ---------- Start background monitor on startup ----------
+
 @app.on_event("startup")
 def start_monitor():
     thread = threading.Thread(target=monitor_loop, daemon=True)

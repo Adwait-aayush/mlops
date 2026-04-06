@@ -18,7 +18,7 @@ MODEL_DIR    = "/app/shared/models"
 MODEL_PATH   = os.path.join(MODEL_DIR, "model.pkl")
 REPORT_PATH  = os.path.join(MODEL_DIR, "training_report.json")
 
-# Model must beat this accuracy to pass
+
 BASELINE_ACC = 0.80
 
 
@@ -33,15 +33,15 @@ def train(X_train, y_train):
     log.info("Training model...")
     model = Pipeline([
         ("tfidf", TfidfVectorizer(
-            max_features=10000,      # more features
+            max_features=10000,     
             stop_words="english",
-            ngram_range=(1, 2),      # use word pairs too e.g. "hockey game"
-            min_df=2,                # ignore very rare words
-            sublinear_tf=True        # better scaling
+            ngram_range=(1, 2),     
+            min_df=2,              
+            sublinear_tf=True     
         )),
         ("clf", LogisticRegression(
             max_iter=1000,
-            C=5.0,                   # stronger regularization tuning
+            C=5.0,                  
             solver="lbfgs"
         ))
     ])
@@ -60,11 +60,11 @@ def evaluate(model, X_test, y_test):
 def save(model, acc):
     os.makedirs(MODEL_DIR, exist_ok=True)
 
-    # Save the model
+    
     with open(MODEL_PATH, "wb") as f:
         pickle.dump(model, f)
 
-    # Save a report
+   
     report = {
         "timestamp":   datetime.utcnow().isoformat(),
         "accuracy":    float(acc),
@@ -89,7 +89,7 @@ def main():
     acc    = evaluate(model, X_test, y_test)
     report = save(model, acc)
 
-    # Quality gate — if accuracy is too low Jenkins will stop the pipeline
+    
     if not report["passed_gate"]:
         log.error(f"Accuracy {acc} is below baseline {BASELINE_ACC}. Failing.")
         raise SystemExit(1)
