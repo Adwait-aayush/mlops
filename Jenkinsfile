@@ -68,7 +68,7 @@ pipeline {
                 sh '''
                     RESPONSE=$(curl -s http://localhost:8001/status)
                     echo "Monitoring response: $RESPONSE"
-                    if echo "$RESPONSE" | grep -q '"healthy": true'; then
+                    if echo "$RESPONSE" | grep -Eq '"healthy"[[:space:]]*:[[:space:]]*true'; then
                         echo "Monitoring gate passed!"
                     else
                         echo "Monitoring gate failed — rolling back!"
