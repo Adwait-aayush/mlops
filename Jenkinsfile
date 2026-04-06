@@ -146,7 +146,7 @@ pipeline {
                     echo "Model healthy: $HEALTHY"
                     if [ "$HEALTHY" != "true" ]; then
                         echo "❌ Monitoring gate failed — model is unhealthy! Rolling back..."
-                        COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT} ${COMPOSE_CMD} down
+                        COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME} ${COMPOSE_CMD} down
                         exit 1
                     fi
                     echo "✅ Monitoring gate passed — model is healthy!"
