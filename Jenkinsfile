@@ -1,16 +1,24 @@
+def composeCmd = ''
+def composeProjectName = ''
+def servingHostPort = '18000'
+def monitoringHostPort = '18001'
+def frontendHostPort = '13000'
+def servingUrl = 'http://localhost:18000'
+def monitorUrl = 'http://localhost:18001'
+
 pipeline {
     agent any
 
     environment {
         // Project name used for all image tags
         PROJECT     = "mlops"
-        COMPOSE_PROJECT = ""
+        
         SERVING_HOST_PORT = "18000"
         MONITORING_HOST_PORT = "18001"
         FRONTEND_HOST_PORT = "13000"
         SERVING_URL = "http://localhost:18000"
         MONITOR_URL = "http://localhost:18001"
-        COMPOSE_CMD = ""
+       
     }
 
     stages {
@@ -44,17 +52,26 @@ pipeline {
                         error("Docker Compose is not available. Install docker compose plugin or docker-compose.")
                     }
 
-                    env.COMPOSE_CMD = cmd
-                    env.COMPOSE_PROJECT = "mlops-${env.BUILD_NUMBER}"
+                    composeCmd = cmd
+                    composeProjectName = "mlops-${env.BUILD_NUMBER}"
                     int offset = (env.BUILD_NUMBER as Integer) % 500
-                    env.SERVING_HOST_PORT = "${18000 + offset}"
-                    env.MONITORING_HOST_PORT = "${19000 + offset}"
-                    env.FRONTEND_HOST_PORT = "${13000 + offset}"
-                    env.SERVING_URL = "http://localhost:${env.SERVING_HOST_PORT}"
-                    env.MONITOR_URL = "http://localhost:${env.MONITORING_HOST_PORT}"
-                    echo "Using compose command: ${env.COMPOSE_CMD}"
-                    echo "Using compose project: ${env.COMPOSE_PROJECT}"
-                    echo "Using ports: serving=${env.SERVING_HOST_PORT}, monitoring=${env.MONITORING_HOST_PORT}, frontend=${env.FRONTEND_HOST_PORT}"
+                    servingHostPort = "${18000 + offset}"
+                    monitoringHostPort = "${19000 + offset}"
+                    frontendHostPort = "${13000 + offset}"
+                    servingUrl = "http://localhost:${servingHostPort}"
+                    monitorUrl = "http://localhost:${monitoringHostPort}"
+
+                    env.COMPOSE_CMD = composeCmd
+                    env.COMPOSE_PROJECT_NAME = composeProjectName
+                    env.SERVING_HOST_PORT = servingHostPort
+                    env.MONITORING_HOST_PORT = monitoringHostPort
+                    env.FRONTEND_HOST_PORT = frontendHostPort
+                    env.SERVING_URL = servingUrl
+                    env.MONITOR_URL = monitorUrl
+
+                    echo "Using compose command: ${composeCmd}"
+                    echo "Using compose project: ${composeProjectName}"
+                    echo "Using ports: serving=${servingHostPort}, monitoring=${monitoringHostPort}, frontend=${frontendHostPort}"
                 }
             }
         }
@@ -63,7 +80,7 @@ pipeline {
         stage('Build Images') {
             steps {
                 echo '🔨 Building all Docker images...'
-                sh "COMPOSE_PROJECT_NAME=${env.COMPOSE_PROJECT} ${env.COMPOSE_CMD} build"
+                sh "COMPOSE_PROJECT_NAME=${composeProjectName} ${composeCmd} build"
             }
         }
 
@@ -73,7 +90,7 @@ pipeline {
         stage('Data Ingestion') {
             steps {
                 echo '📦 Running data ingestion...'
-                sh "COMPOSE_PROJECT_NAME=${env.COMPOSE_PROJECT} ${env.COMPOSE_CMD} run --rm ingestion"
+                sh "COMPOSE_PROJECT_NAME=${composeProjectName} ${composeCmd} run --rm ingestion"
             }
         }
 
@@ -83,7 +100,7 @@ pipeline {
         stage('Train Model') {
             steps {
                 echo '🤖 Training model...'
-                sh "COMPOSE_PROJECT_NAME=${env.COMPOSE_PROJECT} ${env.COMPOSE_CMD} run --rm training"
+                sh "COMPOSE_PROJECT_NAME=${composeProjectName} ${composeCmd} run --rm training"
             }
         }
 
@@ -92,7 +109,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo '🚀 Deploying serving and monitoring...'
-                sh "COMPOSE_PROJECT_NAME=${env.COMPOSE_PROJECT} SERVING_HOST_PORT=${env.SERVING_HOST_PORT} MONITORING_HOST_PORT=${env.MONITORING_HOST_PORT} FRONTEND_HOST_PORT=${env.FRONTEND_HOST_PORT} ${env.COMPOSE_CMD} up -d serving monitoring frontend"
+                sh "COMPOSE_PROJECT_NAME=${composeProjectName} SERVING_HOST_PORT=${servingHostPort} MONITORING_HOST_PORT=${monitoringHostPort} FRONTEND_HOST_PORT=${frontendHostPort} ${composeCmd} up -d serving monitoring frontend"
 
                 echo '⏳ Waiting for services to start...'
                 sh 'sleep 20'
@@ -142,7 +159,7 @@ pipeline {
             steps {
                 echo '🎉 All gates passed — deployment successful!'
                 echo '✅ Services running:'
-                sh "COMPOSE_PROJECT_NAME=${env.COMPOSE_PROJECT} ${env.COMPOSE_CMD} ps"
+                sh "COMPOSE_PROJECT_NAME=${composeProjectName} ${composeCmd} ps"
             }
         }
     }
@@ -154,7 +171,7 @@ pipeline {
         }
         failure {
             echo '❌ Pipeline failed. Check logs above.'
-            sh "COMPOSE_PROJECT_NAME=${env.COMPOSE_PROJECT} ${env.COMPOSE_CMD} down || true"
+            sh "COMPOSE_PROJECT_NAME=${composeProjectName} ${composeCmd} down || true"
         }
         always {
             echo '📋 Pipeline finished. Check http://localhost:3000 for dashboard.'
