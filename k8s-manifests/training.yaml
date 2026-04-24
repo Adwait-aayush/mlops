@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: training
+spec:
+  template:
+    metadata:
+      labels:
+        app: training
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: training
+        image: mlops-training
+        imagePullPolicy: Never
+        volumeMounts:
+        - name: shared-volume
+          mountPath: /app/shared
+      volumes:
+      - name: shared-volume
+        persistentVolumeClaim:
+          claimName: mlops-shared-pvc

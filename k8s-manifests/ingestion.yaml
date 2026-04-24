@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ingestion
+spec:
+  template:
+    metadata:
+      labels:
+        app: ingestion
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: ingestion
+        image: mlops-ingestion
+        imagePullPolicy: Never
+        volumeMounts:
+        - name: shared-volume
+          mountPath: /app/shared
+      volumes:
+      - name: shared-volume
+        persistentVolumeClaim:
+          claimName: mlops-shared-pvc

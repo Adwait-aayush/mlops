@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: serving
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: serving
+  template:
+    metadata:
+      labels:
+        app: serving
+    spec:
+      containers:
+      - name: serving
+        image: mlops-serving
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: shared-volume
+          mountPath: /app/shared
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: shared-volume
+        persistentVolumeClaim:
+          claimName: mlops-shared-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: serving
+spec:
+  selector:
+    app: serving
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP  # Internal; expose externally if needed

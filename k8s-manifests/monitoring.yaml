@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitoring
+  template:
+    metadata:
+      labels:
+        app: monitoring
+    spec:
+      containers:
+      - name: monitoring
+        image: mlops-monitoring
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8001
+        volumeMounts:
+        - name: shared-volume
+          mountPath: /app/shared
+        env:
+        - name: SERVING_URL
+          value: "http://serving:8000"  # Uses K8s DNS
+      volumes:
+      - name: shared-volume
+        persistentVolumeClaim:
+          claimName: mlops-shared-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring
+spec:
+  selector:
+    app: monitoring
+  ports:
+  - port: 8001
+    targetPort: 8001
+  type: ClusterIP
