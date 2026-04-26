@@ -78,11 +78,35 @@ pipeline {
                 '''
             }
         }
+        
+        stage('Kubernetes Deploy') { 
+            steps {
+                 echo 'Deploying to Kubernetes...'
+                  sh 'kubectl apply -f k8s-manifests/shared-pvc.yaml'
+                 sh 'kubectl apply -f k8s-manifests/ingestion.yaml' 
+                 sh 'kubectl apply -f k8s-manifests/training.yaml' 
+                 sh 'kubectl apply -f k8s-manifests/serving.yaml' 
+                 sh 'kubectl apply -f k8s-manifests/monitoring.yaml' 
+                 sh 'kubectl apply -f k8s-manifests/frontend.yaml' 
+                 
+                 echo 'Waiting for pods to be ready...' 
+                 sh 'kubectl get pods' 
+                 sh 'sleep 20'
+                  }
+         }
+        stage('Kubernetes Check') {
+             steps {
+                 echo 'Checking Kubernetes deployment...'
+                  sh 'kubectl get pods'
+                   sh 'kubectl get services' 
+                   }
+     }
 
         stage('Full Rollout') {
             steps {
                 echo 'All gates passed - deployment successful!'
                 sh 'docker compose ps'
+                sh 'kubectl get pods'
             }
         }
     }
